@@ -1,0 +1,58 @@
+version: "3"
+
+#docker exec -it kafka /bin/sh
+  #sh-4.4$ kafka-console-producer --broker-list 0.0.0.0:9092 --topic mytopic
+#docker exec -it kafka /bin/sh
+  #sh-4.4$ kafka-console-consumer --bootstrap-server 0.0.0.0:9092 --topic mytopic --from-beginning
+
+services:
+  go-producer:
+    container_name: go-producer
+    build:
+      context: .
+      dockerfile: ./docker/producer/Dockerfile
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: members
+    restart: always
+    depends_on:
+      - kafka
+
+  go-consumer:
+    container_name: go-consumer
+    build:
+      context: .
+      dockerfile: ./docker/consumer/Dockerfile
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: members
+    restart: always
+    depends_on:
+      - kafka
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka
+    hostname: kafka
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+    restart: always
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://host.docker.internal:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
