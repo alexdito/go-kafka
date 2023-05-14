@@ -3,11 +3,27 @@ version: "3"
 #docker exec -it kafka /bin/sh
   #sh-4.4$ kafka-console-producer --broker-list 0.0.0.0:9092 --topic mytopic
 #docker exec -it kafka /bin/sh
-  #sh-4.4$ kafka-console-consumer --bootstrap-server 0.0.0.0:9092 --topic mytopic --from-beginning
+  #sh-4.4$ kafka-console-command --bootstrap-server 0.0.0.0:9092 --topic mytopic --from-beginning
 
 services:
+  go-command:
+    container_name: go-command
+    build:
+      context: .
+      dockerfile: ./docker/command/Dockerfile
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: members
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+    networks:
+      - backend
+
   go-producer:
-    container_name: go-producer
+    container_name: es-producer
     build:
       context: .
       dockerfile: ./docker/producer/Dockerfile
@@ -17,33 +33,61 @@ services:
     restart: always
     depends_on:
       - kafka
+    networks:
+      - backend
 
-  go-consumer:
-    container_name: go-consumer
+  go-query:
+    container_name: go-query
     build:
       context: .
-      dockerfile: ./docker/consumer/Dockerfile
-    environment:
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_TOPIC: members
+      dockerfile: ./docker/query/Dockerfile
+    ports:
+      - "8081:8081"
     restart: always
     depends_on:
       - kafka
+    networks:
+      - backend
+
+  event-storage-redis:
+    image: redis
+    profiles: [ "event-storage-redis" ]
+    container_name: event-storage-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+
+  query-storage-redis:
+    image: redis
+    profiles: [ "query-storage" ]
+    container_name: query-storage-redis
+    command: --port 6380
+    ports:
+      - "6380:6380"
+    expose:
+      - "6380"
+    environment:
+      - REDIS_HOSTS=local:redis:6380
+    networks:
+      - backend
 
   zookeeper:
     image: confluentinc/cp-zookeeper
     hostname: zookeeper
-    container_name: zookeeper
+    container_name: es-zookeeper
     ports:
       - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - backend
 
   kafka:
     image: confluentinc/cp-kafka
     hostname: kafka
-    container_name: kafka
+    container_name: es-kafka
     depends_on:
       - zookeeper
     ports:
@@ -56,3 +100,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://host.docker.internal:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+    networks:
+      - backend
+
+networks:
+  backend:
