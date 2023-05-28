@@ -1,9 +1,9 @@
 version: "3"
 
 #docker exec -it kafka /bin/sh
-  #sh-4.4$ kafka-console-producer --broker-list 0.0.0.0:9092 --topic mytopic
+  #sh-4.4$ kafka-console-producer --broker-list 0.0.0.0:9092 --topic messages
 #docker exec -it kafka /bin/sh
-  #sh-4.4$ kafka-console-command --bootstrap-server 0.0.0.0:9092 --topic mytopic --from-beginning
+  #sh-4.4$ kafka-console-consumer --bootstrap-server 0.0.0.0:9092 --topic messages --from-beginning
 
 services:
   go-command:
